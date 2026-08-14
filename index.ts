@@ -11,14 +11,13 @@
  *   `COMMANDCODE_API_KEY` environment, or the Command Code auth files,
  * - a configurable-provider directory entry and model discovery so the web
  *   Models page can configure and interrogate the provider,
- * - `/commandcode-refresh`, `/commandcode-status`, and `/commandcode-login`
+ * - `/commandcode-refresh`, `/commandcode-status`, and `/commandcode-setkey`
  *   commands.
  *
  * @module dsh-commandcode-provider
  */
 
 import type { Context } from '@deepseek-ai/cordis'
-import { spawn } from 'node:child_process'
 import { join } from 'node:path'
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
@@ -30,7 +29,6 @@ import { Config, resolveOptions } from './src/config.ts'
 import type { ResolvedCommandCodeOptions } from './src/config.ts'
 import { getApiKey } from './src/converters.ts'
 import { PROVIDER, discoverModels } from './src/discovery.ts'
-import { login } from './src/oauth.ts'
 import { CommandCodeCatalog, formatCommandCodeStatus } from './src/runtime.ts'
 
 export { CommandCodeAdapter } from './src/adapter.ts'
@@ -52,27 +50,6 @@ export function defaultModelsCachePath(): string {
   return join(resolveDshHome(), 'commandcode', 'commandcode-models.json')
 }
 
-/** Open a URL in the platform default browser, detached from the host. */
-function openBrowser(url: string): void {
-  const platform = process.platform
-  if (platform === 'win32') {
-    spawn('cmd', ['/c', 'start', '', url], { stdio: 'ignore', detached: true, windowsHide: true }).unref()
-  } else if (platform === 'darwin') {
-    spawn('open', [url], { stdio: 'ignore', detached: true }).unref()
-  } else {
-    spawn('xdg-open', [url], { stdio: 'ignore', detached: true }).unref()
-  }
-}
-
-/** Structural user-questions ask (optional service; avoids a hard peer import). */
-interface UserQuestionsLike {
-  ask(request: {
-    questions: { id: string; question: string; header?: string }[]
-    agent?: unknown
-    signal?: AbortSignal
-  }): Promise<{ answers: { id: string; selected: string[]; custom?: string }[] }>
-}
-
 /** Structural commands register (the dsh-commands service). */
 interface CommandsLike {
   register(definition: {
@@ -80,6 +57,15 @@ interface CommandsLike {
     description: string
     handler: (invocation: CommandInvocation) => CommandResult | Promise<CommandResult>
   }): void
+}
+
+/** Structural user-questions ask (optional service; the setkey paste path). */
+interface UserQuestionsLike {
+  ask(request: {
+    questions: { id: string; question: string; header?: string }[]
+    agent?: unknown
+    signal?: AbortSignal
+  }): Promise<{ answers: { id: string; selected: string[]; custom?: string }[] }>
 }
 
 export function apply(ctx: Context, config: Config): void {
@@ -128,9 +114,8 @@ export function apply(ctx: Context, config: Config): void {
     const fileKey = getApiKey({ env: {} })
     if (fileKey !== undefined) return fileKey
     throw new LlmError(
-      `commandcode-provider: no Command Code API key for provider route "${PROVIDER}"; store ${ref} through`
-      + ' the credentials service (the web Models page writes it), run /commandcode-login,'
-      + ` or export ${ref} in the launching environment`,
+      `commandcode-provider: no Command Code API key for provider route "${PROVIDER}"; open the web Models page (Settings → Models → Command Code → Edit) and paste the key,`
+      + ` store ${ref} through the credentials service, run /commandcode-setkey, or export ${ref} in the launching environment`,
       'MISSING_CREDENTIAL',
     )
   }
@@ -193,7 +178,7 @@ export function apply(ctx: Context, config: Config): void {
   }
   ensureCatalogFacts()
 
-  const loginHandler = async (invocation: CommandInvocation): Promise<CommandResult> => {
+  const setKeyHandler = async (invocation: CommandInvocation): Promise<CommandResult> => {
     const connection = options()
     const credentials = ctx.get('credentials')
     if (credentials === undefined) {
@@ -202,37 +187,33 @@ export function apply(ctx: Context, config: Config): void {
         text: 'commandcode-provider: no credentials service is mounted; export COMMANDCODE_API_KEY or configure ~/.commandcode/auth.json instead',
       }
     }
+    const userQuestions = ctx.get('userQuestions') as UserQuestionsLike | undefined
+    if (userQuestions === undefined) {
+      return {
+        kind: 'error',
+        text: 'commandcode-provider: no interactive prompt is available; paste the key via the web Models page (Settings → Models → Command Code → Edit) or export COMMANDCODE_API_KEY',
+      }
+    }
     try {
-      const stored = await login({
-        onAuth: ({ url }) => openBrowser(url),
-        onPrompt: async ({ message }) => {
-          const userQuestions = ctx.get('userQuestions') as UserQuestionsLike | undefined
-          if (userQuestions === undefined) {
-            throw new Error(
-              'Automatic browser transfer failed, and no interactive prompt is available;'
-              + ' store the key via the web Models page or the COMMANDCODE_API_KEY environment variable',
-            )
-          }
-          const answer = await userQuestions.ask({
-            questions: [{ id: 'api-key', question: message, header: 'Command Code API key' }],
-            agent: invocation.agent,
-            signal: invocation.signal,
-          })
-          const item = answer.answers[0]
-          const pasted = item?.custom ?? item?.selected[0]
-          if (pasted === undefined || pasted.length === 0) throw new Error('No Command Code API key provided')
-          return pasted
-        },
+      const answer = await userQuestions.ask({
+        questions: [{ id: 'api-key', question: 'Paste your Command Code API key:', header: 'Command Code API key' }],
+        agent: invocation.agent,
+        signal: invocation.signal,
       })
-      await credentials.set(connection.apiKeyEnv, stored.access)
+      const item = answer.answers[0]
+      const pasted = item?.custom ?? item?.selected[0]
+      if (pasted === undefined || pasted.trim().length === 0) {
+        return { kind: 'error', text: 'No Command Code API key provided' }
+      }
+      await credentials.set(connection.apiKeyEnv, pasted.trim())
       return {
         kind: 'success',
-        text: 'Authenticated with Command Code. The API key was stored through the credentials service.',
+        text: 'Command Code API key stored through the credentials service.',
       }
     } catch (error: unknown) {
       return {
         kind: 'error',
-        text: `Command Code login failed: ${error instanceof Error ? error.message : String(error)}`,
+        text: `Command Code key store failed: ${error instanceof Error ? error.message : String(error)}`,
       }
     }
   }
@@ -265,9 +246,9 @@ export function apply(ctx: Context, config: Config): void {
       },
     })
     commands.register({
-      name: 'commandcode-login',
-      description: 'Authenticate with Command Code through the browser',
-      handler: loginHandler,
+      name: 'commandcode-setkey',
+      description: 'Store a Command Code API key through the credentials service',
+      handler: setKeyHandler,
     })
   }
 

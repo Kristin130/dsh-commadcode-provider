@@ -86,7 +86,7 @@ describe('dsh-commandcode-provider plugin entry', () => {
     expect(discovery).toHaveLength(1)
     expect(discovery[0]?.ns).toBe('commandcode-provider')
     const names = commands.map((c) => c.name).sort()
-    expect(names).toEqual(['commandcode-login', 'commandcode-refresh', 'commandcode-status'])
+    expect(names).toEqual(['commandcode-refresh', 'commandcode-setkey', 'commandcode-status'])
   })
 
   it('refuses an invalid composition entry', () => {

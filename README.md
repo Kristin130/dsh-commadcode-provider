@@ -16,46 +16,46 @@ Everything the pi plugin does, on the dsh host plane:
   1. the Harness credential seam (`ctx.credentials`, what the web Models page writes),
   2. the trusted launch environment (`COMMANDCODE_API_KEY`),
   3. existing Command Code auth files: `~/.commandcode/auth.json`, `~/.pi/agent/auth.json`, `~/.omp/agent/auth.json` (same shapes as the pi plugin).
-  Plus `/commandcode-login`: a browser-assisted flow (local callback server on the CLI-compatible port, state-token CSRF check, paste fallback via `userQuestions`) that stores the returned API key through the credential seam.
-- **Commands** — `/commandcode-refresh` (coalesced re-fetch + re-register, keeps the last valid catalog on failure) and `/commandcode-status` (redacted diagnostics: source, model count, timestamps, cache path, endpoint, warning).
+
+  No browser OAuth flow — the API key is entered directly in the web UI (**Settings → Models → Command Code → Edit**) or via `/commandcode-setkey`, and stored through the credential seam.
+- **Commands** — `/commandcode-refresh` (coalesced re-fetch + re-register, keeps the last valid catalog on failure), `/commandcode-status` (redacted diagnostics: source, model count, timestamps, cache path, endpoint, warning), and `/commandcode-setkey` (paste an API key into the credential seam).
 - **Pricing display** — the static per-model cost table from the pi plugin (USD per million tokens); cost arithmetic mirrors pi-ai's `calculateCost` exactly.
 - **Error hygiene** — context-overflow wording is normalized to the Harness `CONTEXT_WINDOW_EXCEEDED` code, and every error/diagnostic text is redacted (bearer tokens, api keys, user tokens, URLs).
 
 ## Install
 
-The package installs through npm and loads inside dsh as a plain Cordis host plugin.
+**小白友好：安装只要一条命令，插件会自动挂载，不用改任何配置文件。**
 
-### 1. Install the package
+The package declares `dsh.bundle`, so `dsh plugin add` installs it AND automatically joins it to the profile's bundle layers — the shipped `cordis.patch.yml` mounts the provider row for you.
 
-From npm (once published):
+### 1. Install
+
+From npm:
 
 ```sh
 dsh plugin --profile <name> add dsh-commandcode-provider
-# or, from the profile directory directly:
-# pnpm add dsh-commandcode-provider
 ```
 
-Not published yet? Install the same way from a tarball, a local path, or a git URL:
+Or from a local tarball / path / git URL:
 
 ```sh
-npm pack                       # in the dsh-commandcode-provider checkout → dsh-commandcode-provider-0.1.0.tgz
-dsh plugin --profile <name> add ./path/to/dsh-commandcode-provider-0.1.0.tgz
+npm pack    # → dsh-commandcode-provider-0.1.2.tgz
+dsh plugin --profile <name> add ./path/to/dsh-commandcode-provider-0.1.2.tgz
 # or: dsh plugin --profile <name> add ../dsh-commadcode-provider
-# or: dsh plugin --profile <name> add git+https://github.com/<you>/dsh-commandcode-provider.git
+# or: dsh plugin --profile <name> add git+https://github.com/Kristin130/dsh-commandcode-provider.git
 ```
 
-The plugin's peer dependencies (`@deepseek-ai/dsh-llm`, `@deepseek-ai/dsh-settings`, …) are provided by the dsh host; installs through the profile's pnpm workspace (`autoInstallPeers: false`) leave them to resolve from the healed `$DSH_HOME/profiles/node_modules` fallback, so every plugin shares the host's single cordis instance.
+> Do **not** also add a manual `cordis.patch.yml` row for this plugin — the bundle patch already mounts it; a second row would double-register the provider.
 
-### 2. Compose the plugin
+### 2. Restart dsh
 
-Add it to your profile's patch layer (`<profile dir>/cordis.patch.yml`, or `$DSH_HOME/cordis.patch.yml` to apply to every profile):
+The provider then appears in the web UI automatically.
 
-```yaml
-- id: commandcode-provider
-  name: 'dsh-commandcode-provider'
-```
+### 3. Configure the API key
 
-Restart dsh (or reload the profile), then configure the provider:
+Open **Settings → Models → Command Code → Edit** in the web UI and paste your API key into the **API key** field (stored through the credential seam). No YAML, no browser auth flow, and **no API address to configure** — the default `https://api.commandcode.ai` endpoint is used automatically.
+
+For reference, the underlying wiring (in case you prefer declarative config): the plugin's peers (`@deepseek-ai/dsh-llm`, `@deepseek-ai/dsh-settings`, …) are provided by the dsh host — profile installs use `autoInstallPeers: false`, so they resolve from the healed `$DSH_HOME/profiles/node_modules` fallback and every plugin shares the host's single cordis instance.
 
 ```yaml
 # $DSH_HOME/settings.yaml
@@ -63,13 +63,13 @@ commandcode-provider:
   apiKeyEnv: COMMANDCODE_API_KEY   # credential reference the Models page writes
 ```
 
-Or use the web UI: the Models page shows the **Command Code** card (from the configurable-provider directory), stores the API key through the credential seam, and can fetch the live model catalog.
-
 ## Authentication
 
-### Browser login
+### Web UI (recommended)
 
-Run `/commandcode-login` in a chat. dsh opens the Command Code Studio auth page in your browser; after you authenticate, the API key is POSTed back to the local callback server and stored through the credential seam. If automatic transfer fails, the flow asks you to paste the key from the browser (via the `userQuestions` UI); if no interactive UI is mounted, it tells you to use the Models page or the environment variable instead.
+The API key is entered directly in **Settings → Models → Command Code → Edit** — a single **API key** field. There is no browser OAuth flow and no API address to fill in.
+
+You can also run `/commandcode-setkey` in a chat and paste the key when prompted.
 
 ### Environment variable
 
@@ -111,7 +111,7 @@ The `commandcode-provider` settings section accepts:
 | --- | --- | --- |
 | `apiKeyEnv` | `COMMANDCODE_API_KEY` | Credential reference resolved per request |
 | `displayName` | `Command Code` | Name shown by selectors |
-| `baseURL` | `COMMANDCODE_API_BASE` env → `https://api.commandcode.ai` | API base for `/alpha/generate` |
+| `baseURL` | `COMMANDCODE_API_BASE` env → `https://api.commandcode.ai` | API base for `/alpha/generate` (usually leave at default) |
 | `modelsUrl` | `COMMANDCODE_MODELS_URL` env → Provider API | Model discovery endpoint |
 | `modelsTimeoutMs` | `COMMANDCODE_MODELS_TIMEOUT_MS` env → `10000` | Discovery timeout |
 | `modelsCachePath` | `COMMANDCODE_MODELS_CACHE` env → `<dsh home>/commandcode/commandcode-models.json` | Catalog cache path |
@@ -121,6 +121,18 @@ The `commandcode-provider` settings section accepts:
 | `timeoutMs` | — | Per-attempt HTTP request timeout |
 | `streamIdleTimeoutMs` | `300000` | Max idle time while one stream read is outstanding |
 | `retryPolicy` | normal defaults | Provider-owned model-request retry policy |
+
+## Changelog
+
+### 0.1.2
+
+- **Removed the browser OAuth flow** (and the local callback server): no more `/commandcode-login`, no browser pop-up. The API key is entered directly in **Settings → Models → Command Code → Edit** (single API key field) or via `/commandcode-setkey`.
+- Models-page card for Command Code shows only the **API key** field; the API address is not configurable there (the default endpoint is used).
+- `/commandcode-login` is replaced by `/commandcode-setkey`.
+
+### 0.1.0 / 0.1.1
+
+- Initial port of `pi-commandcode-provider`: `/alpha/generate` streaming, model discovery + cache, reasoning efforts, image input, pricing display.
 
 ## Development
 

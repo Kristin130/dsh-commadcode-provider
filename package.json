@@ -1,6 +1,6 @@
 {
   "name": "dsh-commandcode-provider",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "Command Code provider plugin for DeepSeek Harness (dsh) — mirrors pi-commandcode-provider; install with npm and add a cordis row",
   "type": "module",
   "keywords": [
@@ -16,7 +16,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/example/dsh-commandcode-provider.git"
+    "url": "git+https://github.com/Kristin130/dsh-commandcode-provider.git"
   },
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
@@ -31,6 +31,7 @@
   "files": [
     "lib",
     "src",
+    "cordis.patch.yml",
     "README.md",
     "LICENSE"
   ],
@@ -39,7 +40,10 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prepack": "npm run build"
+    "prepack": "npm run build",
+    "publish:public": "npm publish --registry https://registry.npmjs.org",
+    "publish:dry-run": "npm publish --dry-run --registry https://registry.npmjs.org",
+    "publish:otp": "npm publish --registry https://registry.npmjs.org --otp"
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "*",
@@ -81,5 +85,10 @@
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
   }
 }

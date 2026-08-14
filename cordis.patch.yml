@@ -1,0 +1,7 @@
+# dsh-commandcode-provider bundle patch.
+#
+# Installed as a profile dependency (`dsh plugin --profile <name> add dsh-commandcode-provider`),
+# this file mounts the provider plugin automatically — no manual cordis.patch.yml editing.
+- insert:
+    - id: commandcode-provider
+      name: 'dsh-commandcode-provider'
