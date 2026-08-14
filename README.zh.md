@@ -15,7 +15,7 @@
 ### 1. 安装插件
 
 ```sh
-dsh plugin --profile <名字> add dsh-commandcode-provider
+dsh plugin --profile web add dsh-commandcode-provider
 ```
 
 包声明了 `dsh.bundle`，所以 `dsh plugin add` 安装的同时会自动把它加入 profile 的 bundle 层——自带的 `cordis.patch.yml` 会替你挂好 provider 行。
