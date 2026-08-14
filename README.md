@@ -15,7 +15,7 @@ A custom LLM provider plugin for [DeepSeek Harness](https://github.com/deepseek-
 ### 1. Install
 
 ```sh
-dsh plugin --profile <name> add dsh-commandcode-provider
+dsh plugin --profile web add dsh-commandcode-provider
 ```
 
 The package declares `dsh.bundle`, so `dsh plugin add` installs it AND automatically joins it to the profile's bundle layers — the shipped `cordis.patch.yml` mounts the provider row for you.
