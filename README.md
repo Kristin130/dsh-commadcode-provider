@@ -1,5 +1,7 @@
 # dsh-commandcode-provider
 
+**Languages:** English | [中文](README.zh.md)
+
 A custom LLM provider plugin for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) (dsh) that connects dsh to [Command Code](https://commandcode.ai) — a faithful port of [pi-commandcode-provider](https://github.com/patlux/pi-commandcode-provider) onto dsh's LLM seam.
 
 > **Works with every Command Code plan, including the $1/month Go plan.** Even the Go plan — the only one without Provider API access — gives you an API key in the Studio; that key authenticates the CLI/agent login. This plugin uses that same key against Command Code's own `/alpha/generate` endpoint, **not** the traditional Provider API protocol, so it works even when a plan has no Provider API access.
@@ -8,7 +10,7 @@ A custom LLM provider plugin for [DeepSeek Harness](https://github.com/deepseek-
 
 ## Quick Start
 
-**小白友好：安装只要一条命令，插件会自动挂载，不用改任何配置文件。**
+**Newbie-friendly: one command to install — the plugin mounts itself, no config files to edit.**
 
 ### 1. Install
 
