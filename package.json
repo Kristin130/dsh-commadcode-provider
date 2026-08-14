@@ -1,7 +1,7 @@
 {
   "name": "dsh-commandcode-provider",
   "version": "0.1.2",
-  "description": "Command Code provider plugin for DeepSeek Harness (dsh) — mirrors pi-commandcode-provider; install with npm and add a cordis row",
+  "description": "Command Code provider plugin for DeepSeek Harness (dsh) — works with every Command Code plan including the $1 Go plan; uses the Studio authentication API key over /alpha/generate, not the Provider API",
   "type": "module",
   "keywords": [
     "dsh",
@@ -33,6 +33,7 @@
     "src",
     "cordis.patch.yml",
     "README.md",
+    "README.zh.md",
     "LICENSE"
   ],
   "scripts": {
