@@ -15,7 +15,7 @@
 ### 1. 安装插件
 
 ```sh
-dsh plugin --profile web add dsh-commandcode-provider
+dsh plugin --profile web add dsh-commandcode-provider@0.1.3
 ```
 
 包声明了 `dsh.bundle`，所以 `dsh plugin add` 安装的同时会自动把它加入 profile 的 bundle 层——自带的 `cordis.patch.yml` 会替你挂好 provider 行。
@@ -38,9 +38,7 @@ dsh plugin --profile web add dsh-commandcode-provider
 
 ### 4. 配置 API key（二选一）
 
-**方式 A —— Web UI（推荐）：** 打开 dsh 的 **设置 → 模型 → Command Code → 编辑**，把 key 粘贴进唯一的 **API key** 输入框，点 **保存**。不需要 YAML、没有浏览器 OAuth、**不用配置 API 地址**——默认自动使用 `https://api.commandcode.ai`。
-
-**方式 B —— 聊天命令：** 在 dsh 聊天里输入：
+**聊天命令：** 在 dsh 聊天里输入：
 
 ```
 /commandcode-setkey

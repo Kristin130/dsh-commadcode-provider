@@ -15,7 +15,7 @@ A custom LLM provider plugin for [DeepSeek Harness](https://github.com/deepseek-
 ### 1. Install
 
 ```sh
-dsh plugin --profile web add dsh-commandcode-provider
+dsh plugin --profile web add dsh-commandcode-provider@0.1.3
 ```
 
 The package declares `dsh.bundle`, so `dsh plugin add` installs it AND automatically joins it to the profile's bundle layers — the shipped `cordis.patch.yml` mounts the provider row for you.
@@ -38,9 +38,7 @@ Even on the **Go plan**, Command Code gives you an API key used for authenticati
 
 ### 4. Configure the API key (either way)
 
-**Option A — Web UI (recommended):** Open **Settings → Models → Command Code → Edit** in dsh, paste the key into the single **API key** field, and click **Apply**. No YAML, no browser OAuth, no API address to configure — the default endpoint `https://api.commandcode.ai` is used automatically.
-
-**Option B — Command:** In a dsh chat, run:
+** Command:** In a dsh chat, run:
 
 ```
 /commandcode-setkey
